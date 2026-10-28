@@ -1,482 +1,405 @@
 # Content Studio Product Requirements Document
 
-- **Document version:** 0.1.0
+- **Document version:** 0.2.0
 - **Status:** Draft for review
 - **Last updated:** 2026-10-27
 - **Repository:** `chkoster/content-studio`
-- **Product status:** New build; implementation status beyond this document is unverified
+- **Product status:** New build; implementation status is unverified
 
-## 1. Purpose and product principles
+## 1. Product definition
 
 Content Studio is a private web application that turns enterprise security architecture book material, personal ideas, and meaningful news into high-quality social-content packages for LinkedIn, X, and future platforms.
 
+The target outcome is one or two strong, source-supported posts per week that require little rework.
+
 The product is a social-content production system, not a replacement for the book-writing application.
 
-The system must:
+### Editorial principles
 
-- Prefer substantive connections to specific book concepts over generic commentary.
+- Prefer substantive, non-forced connections to specific book concepts.
 - Preserve source references supporting each claim.
-- Keep a human in control of angle selection, final approval, GitHub export, and publication.
-- Automate intake and preparation without granting permission for automatic public posting.
+- Suppress weak opportunities by default.
+- Surface critical news as clearly labeled urgent topics even when no strong book connection exists.
+- Never fabricate claims, data, source support, or book relevance.
 - Use the same approved brief and claim set for text and graphics.
-- Treat provenance, confidentiality, and revision history as first-class product data.
+- Keep the author in control of angle selection, final approval, GitHub export, and publication.
 
-## 2. Scope and status vocabulary
-
-Requirement labels:
+### Requirement status labels
 
 - **AGREED** — established product decision.
 - **RECOMMENDED** — proposed default pending review.
 - **OPEN** — material decision still required.
 - **UNVERIFIED** — dependent on repository, service, or credential inspection.
 
-This document is the source of intended behavior. Future changes follow:
-
-1. Update this specification and affected acceptance tests.
-2. Identify affected code, migrations, and integrations.
-3. Implement and test.
-4. Review the change.
-5. Separately authorize merge and deployment where applicable.
-
-A specification edit is not deployment approval.
-
-## 3. Goals
-
-### G-001 — Content production
-
-**AGREED:** Help one author produce distinctive, source-supported social content efficiently.
-
-### G-002 — Source-grounded reasoning
-
-**AGREED:** Connect news and ideas to relevant passages or concepts from the enterprise security architecture book.
-
-### G-003 — Human approval
-
-**AGREED:** Require explicit human review and approval of the exact final content package.
-
-### G-004 — Retained automation
-
-**AGREED:** Automate scheduled source intake, filtering, and preparation around human approval gates.
-
-### G-005 — Durable provenance
-
-**AGREED:** Preserve source-to-claim-to-draft-to-asset traceability.
-
-### G-006 — GitHub authority
-
-**AGREED:** GitHub is authoritative for the manuscript and selected drafts, posts, images, and other content assets.
-
-## 4. Non-goals
-
-The MVP will not:
-
-- Publish automatically to social platforms.
-- Replace the manuscript repository or book-writing workflow.
-- Use an unrestricted autonomous-agent swarm.
-- Provision Supabase Storage.
-- Promise factual correctness without human review.
-- Optimize heavily for analytics before useful publication feedback exists.
-- Require multi-user collaboration beyond private authentication and authorization.
-- Treat the existing `agentic-writing-studio` D1/R2 architecture as the target architecture.
-
-## 5. Users and permissions
+## 2. Users, scope, and non-goals
 
 ### Primary user
 
 **AGREED:** A single author/operator who selects angles, reviews drafts, approves content, authorizes exports, manually publishes, and records feedback.
 
-### Recommended permission roles
+The initial implementation may map all permissions to one authenticated user, while retaining a role-aware authorization model.
 
-- **Viewer:** Read sources, packages, checks, and publication history.
-- **Editor:** Create and revise ideas, angles, briefs, drafts, and graphics.
-- **Approver:** Approve a specific revision after checks pass.
-- **Exporter:** Separately authorize export of an approved revision to GitHub.
-- **Administrator:** Manage sources, schedules, model settings, and integration configuration.
+### MVP scope
 
-The initial implementation may map all roles to one authenticated user, but the authorization model should not make future separation difficult.
+- Ingest book material, ideas, RSS items, and Readwise items.
+- Normalize and deduplicate source material.
+- Identify relevant book passages and propose content angles.
+- Surface exceptional urgent topics for critical news.
+- Generate an editorial brief, platform-specific drafts, and supported graphics.
+- Run factual-support, provenance, voice, confidentiality, platform, and visual checks.
+- Maintain immutable revisions and revision-specific approvals.
+- Export approved content to GitHub only after separate authorization.
+- Record manual publication details and feedback.
+- Automate intake and preparation around human approval gates.
 
-## 6. MVP workflow
+### Explicit non-goals
 
-### 6.1 Workflow states
+- Automatic public posting.
+- Replacing the manuscript repository or book-writing workflow.
+- Unrestricted autonomous-agent swarms.
+- Supabase Storage in the MVP.
+- Factual correctness without human review.
+- Optimizing for volume or filling a queue with weak opportunities.
+- Multi-user collaboration beyond the initial private user model.
+- Treating `agentic-writing-studio` or its D1/R2 architecture as the target system.
 
-A content package progresses through:
+## 3. Functional requirements
 
-`captured` → `normalized` → `candidate` → `angle_proposed` → `angle_selected` → `brief_drafted` → `drafted` → `checks_pending` → `ready_for_review` → `approved` → `export_authorized` → `exported` → `published`
+### 3.1 Authentication and authorization
 
-Additional terminal or recovery states:
+**FR-001 — Private access**  
+The system shall require authentication before exposing source material, drafts, approvals, jobs, settings, or publication records.
 
-- `needs_revision`
-- `archived`
-- `failed`
+**FR-002 — Role-aware authorization**  
+The system shall model at least Viewer, Editor, Approver, Exporter, and Administrator capabilities, even if the MVP uses one user.
 
-### 6.2 Required transitions
+**FR-003 — Separate approval capabilities**  
+The system shall distinguish final content approval from GitHub export authorization. Approval shall never authorize public posting.
 
-- A source item becomes `candidate` only after normalization and deduplication.
-- An angle must identify its supporting source items and relevant book passages.
-- A user must select an angle before production.
-- Draft generation creates a new immutable content revision.
-- Quality checks evaluate a revision without silently modifying it.
-- A failed or blocking check prevents `ready_for_review`.
-- Human approval applies only to the exact revision reviewed.
-- Any material change to text, claims, references, graphics, or platform configuration creates a new revision and invalidates prior approval.
-- GitHub export requires a separate explicit authorization after approval.
-- Approval never authorizes public posting.
-- Publication is recorded manually in the MVP.
+### 3.2 Source ingestion
 
-### 6.3 Human approval gates
+**FR-010 — Book ingestion**  
+The system shall import book documents and preserve repository, revision, document, chapter, section, passage, path, and location references where available.
 
-Required gates:
+**FR-011 — RSS ingestion**  
+The system shall ingest configured RSS feeds and preserve feed URL, canonical item URL, title, author where available, publication time, retrieval time, normalized content, and fingerprint.
 
-1. **Angle selection**
-2. **Editorial review**
-3. **Final package approval**
-4. **Separate GitHub export authorization**
+**FR-012 — Readwise ingestion**  
+The system shall ingest Readwise items or an import fixture and preserve provider identifier, source URL, highlights, notes, retrieval time, and fingerprint.
 
-The system must display the revision identifier at each approval action.
+**FR-013 — Idea capture**  
+The user shall be able to create an idea with title, body, tags, optional references, and creation/update metadata.
 
-## 7. Product screens
+**FR-014 — Scheduled intake**  
+The system shall support scheduled source-intake jobs for configured RSS and Readwise sources.
 
-### SCR-001 — Dashboard
+**FR-015 — Ingestion reporting**  
+Each intake run shall report new items, duplicates, skipped items, failures, and retry status.
 
-Show pipeline counts, pending reviews, failed jobs, recent packages, and scheduled intake status.
+### 3.3 Normalization and discovery
 
-### SCR-002 — Sources
+**FR-020 — Deduplication**  
+The system shall deduplicate using provider identifiers, canonical URLs, normalized title/source, content fingerprints, and configurable similarity detection where available.
 
-Show book documents and passages, ideas, RSS items, Readwise items, provenance, retrieval metadata, and deduplication status.
+**FR-021 — Duplicate provenance**  
+Deduplicated records shall retain links to all observed source occurrences.
 
-### SCR-003 — Discovery queue
+**FR-022 — Relevance evaluation**  
+The system shall evaluate source items against book concepts and configured editorial criteria.
 
-Show candidate items, relevance explanations, book connections, proposed angles, source references, and selection actions.
+**FR-023 — Explainable relevance**  
+Each relevance result shall include a score or category, human-readable reasons, relevant book passages, and source references.
 
-### SCR-004 — Content package
+**FR-024 — Strict default filtering**  
+The system shall suppress or deprioritize items with weak or forced book connections by default.
 
-Show selected angle, editorial brief, claims, citations, platform drafts, graphics, and revision history.
+**FR-025 — Critical-news exception**  
+The system shall surface critical news—such as zero-day vulnerabilities or major government action—as clearly labeled urgent topics even without a strong book connection.
 
-### SCR-005 — Review workspace
+**FR-026 — No fabricated relevance**  
+The system shall explicitly indicate when an urgent topic lacks a strong book connection and shall not invent or overstate one.
 
-Show exact revision comparison, check results, source references, confidentiality findings, accessibility text, and approval/export actions.
+**FR-027 — Angle proposals**  
+The system shall propose one or more distinctive angles from selected source material, with supporting source items, book passages, and expected claims.
 
-### SCR-006 — Jobs and schedules
+**FR-028 — Human angle selection**  
+The user shall select an angle before production proceeds.
 
-Show schedules, job attempts, idempotency keys, retries, failures, cost estimates, and recovery actions.
+### 3.4 Voice and content production
 
-### SCR-007 — Publication log
+**FR-030 — Voice hierarchy**  
+The system shall use the author-provided writer's-guide JSON as the authoritative voice source.
 
-Allow manual recording of platform, publication URL, publication timestamp, content revision, and feedback metrics or notes.
+**FR-031 — Voice fallbacks**  
+The system may use the book for subject-matter depth and selected published posts for social tone. A supplemental voice guide may address gaps.
 
-### SCR-008 — Settings
+**FR-032 — Voice conflict resolution**  
+The writer's guide shall override conflicting or older published posts.
 
-Manage source configuration, GitHub destination, model configuration, schedules, and authorization settings without exposing secrets to the browser.
+**FR-033 — Editorial brief**  
+The system shall create a brief containing audience, purpose, selected angle, thesis, key claims, supporting sources, relevant book passages, platform notes, confidentiality notes, and graphic direction.
 
-## 8. End-to-end journeys
+**FR-034 — Platform drafts**  
+The system shall create separate LinkedIn and X drafts from the same brief and claim set.
 
-### J-001 — Scheduled source intake
+**FR-035 — Claim preservation**  
+Platform adaptation shall not silently introduce unsupported claims.
 
-1. A configured schedule starts an intake job.
-2. The job retrieves RSS and Readwise items.
-3. Items are normalized and fingerprinted.
-4. Duplicates are linked to their existing source record.
-5. New items are persisted with retrieval metadata.
-6. The job reports its result and any failures.
+**FR-036 — Claim provenance**  
+Every factual claim shall link to one or more source references, or be marked as opinion/editorial framing.
 
-### J-002 — Book ingestion
+**FR-037 — Graphics**  
+The system shall support diagrams, carousels, charts, and illustrations derived from the same brief and claim set as the text.
 
-1. The system imports book documents from the configured book repository or fixture.
-2. It preserves document, chapter, section, passage, and repository revision references.
-3. It stores passages suitable for search and source citation.
-4. Re-importing the same revision is idempotent.
+**FR-038 — Graphic claim integrity**  
+Graphics shall use only supported claims or clearly labeled editorial decoration. Invented data is prohibited.
 
-### J-003 — Discovery and angle selection
+**FR-039 — Graphic accessibility**  
+Each graphic shall include appropriate alternative text, labels, legible typography, and sufficient contrast.
 
-1. The controller evaluates source items against book concepts and configured relevance criteria.
-2. It proposes one or more angles with explanations.
-3. Each angle lists source items, book passages, and expected claims.
-4. The user selects one angle.
-5. The selected angle becomes the input to production.
+### 3.5 Quality checks and review
 
-### J-004 — Production and review
+**FR-040 — Independent checks**  
+The system shall evaluate a revision without silently modifying it.
 
-1. The controller creates an editorial brief.
-2. It creates platform-specific drafts for LinkedIn and X.
-3. It creates a graphic concept or asset using the same brief and claims.
-4. Independent checks evaluate support, provenance, voice, confidentiality, platform fit, and visual accessibility.
-5. The user revises or approves the exact package revision.
+**FR-041 — Required check categories**  
+Checks shall cover factual support, source validity, citation completeness, voice, confidentiality, platform constraints, repetitive angles, graphic-to-claim consistency, accessibility, and visual quality.
 
-### J-005 — Export and publication
+**FR-042 — Blocking findings**  
+Each check shall identify whether a finding blocks review readiness or approval.
 
-1. The user approves a revision.
-2. The user separately authorizes GitHub export.
-3. The system records repository, branch, paths, revision, and resulting commit.
-4. The user manually publishes.
-5. The user records publication details and feedback.
+**FR-043 — Review workspace**  
+The user shall be able to inspect the exact revision, source references, claims, graphics, check findings, and revision differences.
 
-## 9. Sources, ingestion, and provenance
+**FR-044 — Revision creation**  
+Material changes to text, claims, references, graphics, or platform configuration shall create a new immutable revision.
 
-### SRC-001 — Book sources
+**FR-045 — Approval invalidation**  
+A new revision shall invalidate approvals for earlier revisions.
 
-The book repository is the authoritative manuscript source. Passage references must preserve repository, revision, path or document identifier, and location where available.
+**FR-046 — Final approval**  
+The user shall be able to approve only a specific revision after required blocking checks pass.
 
-### SRC-002 — RSS sources
+### 3.6 Workflow and operations
 
-Each RSS item must preserve feed URL, canonical item URL, title, author where available, publication time, retrieval time, normalized content, and content fingerprint.
+**FR-050 — Workflow states**  
+The system shall support: `captured`, `normalized`, `candidate`, `angle_proposed`, `angle_selected`, `brief_drafted`, `drafted`, `checks_pending`, `ready_for_review`, `needs_revision`, `approved`, `export_authorized`, `exported`, `published`, `archived`, and `failed`.
 
-### SRC-003 — Readwise sources
+**FR-051 — State integrity**  
+The system shall reject invalid state transitions and record the actor, timestamp, and reason for manual transitions.
 
-Each Readwise item must preserve provider identifier, source URL, highlights, notes, retrieval time, and content fingerprint.
+**FR-052 — Durable jobs**  
+Jobs shall persist state, attempts, timestamps, input/output references, error category, and idempotency key.
 
-### SRC-004 — Ideas
+**FR-053 — Retries**  
+Transient failures shall retry with bounded exponential backoff. Permanent failures shall become reviewable failed jobs.
 
-The user must be able to create an idea with title, body, tags, optional references, and creation/update metadata.
+**FR-054 — Resumption**  
+A failed job shall be resumable from the failed stage without repeating successful prior stages.
 
-### SRC-005 — Deduplication
+**FR-055 — Cost controls**  
+Model stages shall support configurable limits for frequency, batch size, requests/tokens, and estimated cost.
 
-Deduplication must use, where available:
+**FR-056 — Automation boundary**  
+Automation may perform intake, normalization, relevance filtering, and preparation. It shall not approve content, authorize export, or publish publicly.
 
-1. Provider identifier.
-2. Canonical URL.
-3. Normalized title and source.
-4. Content fingerprint.
-5. Configurable similarity detection.
+### 3.7 GitHub export and publication
 
-Deduplicated records must retain links to all observed source occurrences.
+**FR-060 — Explicit export authorization**  
+The user shall explicitly authorize export of an approved revision.
 
-### SRC-006 — Explainable relevance
+**FR-061 — Export traceability**  
+An export shall record repository, branch, paths, content revision, authorization, and resulting commit.
 
-Relevance results must include a score or category plus human-readable reasons, relevant book passages, and source references.
+**FR-062 — Manual publication**  
+The MVP shall not publish automatically to social platforms.
 
-### SRC-007 — Traceability
+**FR-063 — Publication record**  
+The user shall be able to record platform, URL, publication timestamp, content revision, and feedback metrics or notes.
 
-Every claim in a brief or draft must link to one or more source references or be marked as an unsupported opinion or editorial framing. Unsupported factual claims must block approval unless explicitly overridden and recorded.
+## 4. Non-functional requirements
 
-## 10. Content and graphic production
+### 4.1 Quality and editorial integrity
 
-### CNT-001 — Editorial brief
+**NFR-001 — Low-rework quality**  
+The system shall optimize for a high-quality first serious draft, prioritizing book relevance, claim support, and voice over volume or cosmetic polish.
 
-A brief must contain audience, purpose, selected angle, thesis, key claims, supporting sources, relevant book passages, platform notes, confidentiality notes, and graphic direction.
+**NFR-002 — Provenance completeness**  
+The system shall preserve source-to-claim-to-draft-to-asset traceability through review and export.
 
-### CNT-002 — Platform drafts
+**NFR-003 — Deterministic approval scope**  
+An approval shall identify the exact content revision and associated checks.
 
-The system must create separate platform drafts from the same brief and approved claim set. Platform adaptation must not silently introduce unsupported claims.
+**NFR-004 — Accessibility**  
+Generated graphics and review interfaces shall provide required labels, alternative text, legibility, and usable contrast.
 
-### CNT-003 — Revision history
+### 4.2 Security and confidentiality
 
-Drafts, briefs, claims, references, and graphics must be versioned. Revisions must be immutable after approval.
+**NFR-010 — Server-side secrets**  
+Provider credentials and tokens shall remain server-side and shall not appear in browser bundles, committed files, generated content, or logs.
 
-### GFX-001 — Graphic capability
+**NFR-011 — Least privilege**  
+GitHub and source integrations shall use the minimum permissions required.
 
-The MVP must support a graphic-designer capability for diagrams, carousels, charts, and illustrations.
+**NFR-012 — Auditability**  
+The system shall record approvals, export authorizations, configuration changes, overrides, state transitions, and job outcomes.
 
-### GFX-002 — Claim support
+**NFR-013 — Redaction**  
+Logs shall redact credentials and minimize sensitive source content.
 
-Graphics must use only claims in the package claim set or clearly labeled editorial decoration. Invented data is prohibited.
+**NFR-014 — Confidentiality gate**  
+Confidentiality findings shall be evaluated before review readiness.
 
-### GFX-003 — Accessibility
+### 4.3 Reliability and data integrity
 
-Each graphic must include appropriate alternative text, labels, legible typography, and sufficient contrast for its intended use.
+**NFR-020 — Idempotency**  
+Repeating an operation with the same source revision and operation key shall not duplicate source records, revisions, exports, or publication records.
 
-### GFX-004 — Shared brief
+**NFR-021 — Failure visibility**  
+Failures shall expose stage, category, attempt history, retry state, and recommended recovery action.
 
-Text and graphics must reference the same approved brief and claim set.
+**NFR-022 — Immutable revisions**  
+Approved revisions and their approval records shall remain immutable.
 
-## 11. Quality checks
+**NFR-023 — Portable migrations**  
+Database migrations shall use portable PostgreSQL SQL so future movement to local PostgreSQL remains feasible.
 
-Checks are independent evaluations and must not silently rewrite content.
+**NFR-024 — Durable audit trail**  
+Operational events required to reconstruct workflow history shall be persisted in the database.
 
-Required check categories:
+### 4.4 Cost and operational control
 
-- Factual support coverage.
-- Source URL and passage validity.
-- Citation completeness.
-- Voice and audience fit.
-- Confidentiality and sensitive-information detection.
-- Platform constraints.
-- Duplicate or repetitive angle detection.
-- Graphic-to-claim consistency.
-- Accessibility text and label completeness.
-- Visual legibility and quality.
+**NFR-030 — Bounded model usage**  
+Model calls shall be bounded by configurable rate, batch, token/request, and cost limits.
 
-Each check must record status, revision, checker type, timestamp, findings, and whether the finding blocks approval.
+**NFR-031 — No hidden mutation**  
+Quality checks and previews shall not modify content without an explicit user action.
 
-## 12. Data model
+**NFR-032 — Safe defaults**  
+The default system behavior shall favor suppression, review, and non-public actions when uncertain.
 
-Recommended operational tables:
+### 4.5 Development and portability
 
-- `users`
-- `sources`
-- `source_items`
-- `source_references`
-- `book_documents`
-- `book_passages`
-- `ideas`
-- `angles`
-- `content_packages`
-- `content_revisions`
-- `claims`
-- `claim_support`
-- `platform_drafts`
-- `graphics`
-- `quality_checks`
-- `approvals`
-- `jobs`
-- `job_attempts`
-- `schedules`
-- `github_exports`
-- `publication_records`
-- `feedback_events`
-- `audit_events`
+**NFR-040 — Local development**  
+The project shall provide a practical local development server, browser URL, migration/seed commands, fixture mode, and visible workflow updates.
 
-### Ownership boundaries
+**NFR-041 — Secret separation**  
+Browser and server/controller configuration shall be separate.
 
-- **Supabase PostgreSQL:** Operational state, sources, workflow, jobs, approvals, provenance, revisions, and references.
-- **GitHub:** Authoritative approved manuscript-related content and selected assets.
-- **Local temporary files:** Rendering intermediates only; disposable.
-- **Supabase Storage:** Excluded from the MVP.
+**NFR-042 — Portability**  
+The system shall run locally on the author's Mac and retain a practical path to Mac Studio operation. Containerization is optional.
 
-Database migrations should use portable PostgreSQL SQL so future migration to local PostgreSQL remains feasible.
+**NFR-043 — Stack validation**  
+React/TypeScript with Vite and a Node/TypeScript controller remain recommended defaults until repository and environment validation confirms them.
 
-## 13. Jobs, scheduling, retries, and cost controls
+## 5. Data ownership and boundaries
 
-### JOB-001 — Durable jobs
+### Operational data in Supabase PostgreSQL
 
-Jobs must persist state, attempts, timestamps, input references, output references, error category, and idempotency key.
+Sources, source items, provenance, workflow state, jobs, attempts, schedules, claims, revisions, checks, approvals, audit events, publication records, and references.
 
-### JOB-002 — Idempotency
+### Authoritative content in GitHub
 
-Repeating a job with the same source revision and operation key must not create duplicate source records, revisions, exports, or publication records.
+The manuscript and selected approved drafts, posts, images, graphics, and other content assets.
 
-### JOB-003 — Retries
+### Temporary local files
 
-Transient failures may retry with bounded exponential backoff. Permanent failures must move to a reviewable failed state.
+Rendering intermediates only; disposable and not authoritative.
 
-### JOB-004 — Recovery
+### Excluded from MVP
 
-The system must preserve enough context to resume from the failed stage without repeating successful prior stages.
+Supabase Storage and automatic social-posting integrations.
 
-### JOB-005 — Cost controls
+## 6. Core screens
 
-Model stages must support configurable limits for frequency, batch size, token or request budgets, and estimated cost. Cost-related failures must be visible before or during execution.
+- **Dashboard:** pipeline counts, pending reviews, failed jobs, recent packages, schedules.
+- **Sources:** book passages, ideas, RSS, Readwise, provenance, retrieval and deduplication status.
+- **Discovery queue:** candidates, relevance reasons, book connections, urgent-topic labels, angles.
+- **Content package:** selected angle, brief, claims, citations, drafts, graphics, revisions.
+- **Review workspace:** exact revision comparison, check results, accessibility, approval/export actions.
+- **Jobs and schedules:** schedules, attempts, idempotency, retries, failures, cost estimates.
+- **Publication log:** manual publication and feedback records.
+- **Settings:** sources, GitHub destination, model settings, schedules, and authorization.
 
-### SCH-001 — Automation boundaries
+## 7. Acceptance criteria
 
-Automation may perform scheduled intake, normalization, relevance filtering, and preparation. It must not approve content, authorize GitHub export, or publish publicly.
+The MVP shall demonstrate:
 
-## 14. Interfaces and architecture
+1. Fixture book, RSS, Readwise, and idea ingestion.
+2. Duplicate detection without duplicate operational records.
+3. Explainable relevance with linked book passages.
+4. Suppression of weak connections by default.
+5. Clearly labeled urgent-topic handling without fabricated relevance.
+6. Angle selection before production.
+7. Writer's-guide JSON taking precedence over conflicting older posts.
+8. Brief plus LinkedIn/X drafts sharing one claim set.
+9. Claim-level source references.
+10. Graphics using supported claims and accessibility text.
+11. Blocking unsupported claims or missing references.
+12. Revision creation that invalidates earlier approval.
+13. Separate approval and GitHub export authorization.
+14. Export records containing repository, branch, paths, revision, and commit.
+15. Safe retry of a failed job without duplication.
+16. Manual publication recording.
+17. No automatic social posting.
+18. No secrets in browser bundles, Git, logs, or generated assets.
+19. A complete fixture workflow demonstrated locally.
+20. Live integrations separately labeled from fixture behavior.
 
-### Recommended baseline
+## 8. Recommended implementation order
 
-**RECOMMENDED:** React/TypeScript with Vite for the browser, a Node/TypeScript controller, and Supabase PostgreSQL.
+1. Inspect repository and validate local stack.
+2. Confirm authentication and secret handling.
+3. Define portable migrations, workflow state, revisions, and audit events.
+4. Implement book, RSS, Readwise, and idea ingestion.
+5. Implement normalization, deduplication, and provenance.
+6. Implement relevance, urgent-topic override, and angle selection.
+7. Implement writer's-guide configuration and content revisions.
+8. Implement claims, checks, review, and approval invalidation.
+9. Implement platform drafts and graphics.
+10. Implement durable jobs, retries, schedules, and cost controls.
+11. Implement explicit GitHub export.
+12. Implement publication logging and feedback.
+13. Add fixture demonstrations and integration tests.
+14. Verify live integrations individually.
+15. Conduct security and failure-recovery review.
 
-This recommendation is subject to repository inspection and stack validation. The browser must never receive provider secrets.
+## 9. Open decisions
 
-### Controller stages
+### OPEN-001 — GitHub content destination
 
-- **Ordinary code:** ingestion, normalization, deduplication, persistence, state transitions, scheduling, retries, audit logging, exports.
-- **Model calls:** relevance assessment, angle generation, brief drafting, platform adaptation, claim extraction, voice review, graphic concepts.
-- **Human actions:** angle selection, revision, approval, export authorization, publication, feedback.
-
-### Local development
-
-The project should provide:
-
-- a local development server and browser URL;
-- database migration and seed commands;
-- fixture mode;
-- visible job and workflow updates;
-- separate server/controller and browser configuration;
-- clear setup documentation.
-
-Containerization may support later Mac Studio portability but is not required before the local workflow is functional.
-
-## 15. Security and confidentiality
-
-- Use private authentication.
-- Keep all secrets server-side.
-- Never commit secrets or include them in browser bundles or logs.
-- Use least-privilege GitHub access.
-- Record audit events for approvals, exports, configuration changes, and overrides.
-- Redact credentials and sensitive source data from logs.
-- Run confidentiality checks before review readiness.
-- Separate approval from export authorization.
-- Do not add public-posting credentials or APIs to the MVP.
-
-## 16. Acceptance criteria
-
-The MVP is acceptable when all of the following are demonstrated:
-
-1. A fixture book, RSS feed, Readwise export, and user idea can be ingested.
-2. Duplicate source items are detected without duplicate operational records.
-3. A candidate displays explainable relevance and linked book passages.
-4. The user can select an angle.
-5. The system creates a brief and LinkedIn/X drafts from that angle.
-6. The drafts retain claim-level source references.
-7. A graphic can be created from supported claims with accessibility text.
-8. Unsupported claims and missing references are visible and block approval.
-9. Editing creates a new revision and invalidates earlier approval.
-10. GitHub export requires separate explicit authorization.
-11. Export records repository, branch, paths, revision, and commit.
-12. A failed job retries safely without duplication.
-13. Publication can be recorded manually.
-14. No automatic social posting occurs.
-15. Secrets are absent from browser bundles, Git, logs, and generated assets.
-16. The complete fixture workflow can be demonstrated locally.
-17. Live integrations are labeled separately from fixture-based behavior.
-
-## 17. Dependency-aware implementation backlog
-
-1. Inspect repository and establish baseline.
-2. Confirm authentication and secret-handling approach.
-3. Validate the local stack and development workflow.
-4. Define portable migrations and audit events.
-5. Build book, RSS, Readwise, and idea ingestion.
-6. Build normalization, fingerprinting, and deduplication.
-7. Build passage indexing and provenance.
-8. Build relevance filtering and angle selection.
-9. Build package revisions, claims, and approvals.
-10. Build quality-check framework.
-11. Build platform draft generation.
-12. Build graphic production and accessibility validation.
-13. Build durable jobs, retries, schedules, and cost controls.
-14. Build GitHub export with explicit authorization.
-15. Build publication log and feedback capture.
-16. Add fixture demonstration and integration tests.
-17. Verify live integrations individually.
-18. Conduct security and failure-recovery review.
-
-## 18. Open decisions
-
-### OPEN-001 — GitHub destination
-
-**Recommended:** Use `chkoster/content-studio` on `main` for the product and documentation, with a clearly defined content-assets directory for exported material.
+**Recommended:** Use `chkoster/content-studio` on `main` for product documentation and define a separate content-assets directory for exported material.
 
 ### OPEN-002 — Readwise integration
 
-**Recommended:** Start with an import adapter or export fixture, then add API synchronization after the core workflow is proven.
+**Recommended:** Start with an import adapter or fixture, then add API synchronization after the core workflow is proven.
 
 ### OPEN-003 — Deployment target
 
-**Recommended:** Local Mac development first, with a documented path to Mac Studio. Defer hosted deployment until the local workflow is reliable.
+**Recommended:** Local Mac development first, with a documented Mac Studio path. Defer hosted deployment until the local workflow is reliable.
 
 ### OPEN-004 — Model provider
 
-**Recommended:** Define a provider interface and configure one provider initially. Provider credentials remain server-side.
+**Recommended:** Define a provider interface and configure one provider initially. Credentials remain server-side.
 
 ### OPEN-005 — Graphics implementation
 
-**Recommended:** Begin with SVG/HTML-first diagrams and carousels before adding raster-heavy rendering workflows.
+**Recommended:** Start with SVG/HTML-first diagrams and carousels before raster-heavy rendering.
 
 ### OPEN-006 — Authentication model
 
 **Recommended:** Single-user private authentication initially, with role-aware authorization in the data model.
 
-## 19. Change control
+### OPEN-007 — Critical-news taxonomy
 
-A proposed change must identify:
+**OPEN:** Define the initial severity rules and sources that qualify for the urgent-topic override.
 
-- affected requirement identifiers;
-- affected acceptance tests;
-- affected tables or migrations;
-- affected integrations;
-- compatibility and data-preservation considerations;
-- whether separate merge or deployment authorization is required.
+### OPEN-008 — Writer-guide schema
 
-Existing behavior must be preserved unless the approved change explicitly replaces it.
+**OPEN:** Define the required JSON schema, validation rules, and update/versioning workflow for the writer's guide.
+
+## 10. Change control
+
+A proposed change shall identify affected requirement IDs, acceptance tests, tables or migrations, integrations, compatibility considerations, and whether separate merge or deployment authorization is required.
+
+Existing behavior shall be preserved unless an approved change explicitly replaces it.
